@@ -45,7 +45,7 @@ Our bot employs a sophisticated strategy that combines:
 - Efficient Monte Carlo simulation
 
 ## Repository Structure
-- `cfr_bot/`: Main bot implementation directory
+- `cfr_bot/`: MY POKERBOT FINAL SUBMISSION
   - `player.py`: Core bot implementation
   - `skeleton/`: Required framework files
 
