@@ -6,7 +6,7 @@ A sophisticated poker bot that consistently achieves positive expected value thr
 
 The correct bot to use is in the `cfr_bot` directory. This is our main implementation with all the advanced features.
 
-DO NOT use the `my_bot` directory - it is an older version and not the correct implementation.
+DO NOT use the `random_bot` directory - it is an older version and not the correct implementation.
 
 ## Performance Metrics
 

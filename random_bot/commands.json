@@ -1,0 +1,4 @@
+{
+    "build": [],
+    "run": ["C:\\Users\\evank\\Build4Good-Pokerbots\\env\\Scripts\\python.exe", "player.py"]
+}
