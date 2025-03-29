@@ -2,6 +2,12 @@
 
 A sophisticated poker bot that consistently achieves positive expected value through advanced strategy and opponent exploitation.
 
+## ⚠️ IMPORTANT: Which Bot to Use ⚠️
+
+The correct bot to use is in the `cfr_bot` directory. This is our main implementation with all the advanced features.
+
+DO NOT use the `my_bot` directory - it is an older version and not the correct implementation.
+
 ## Performance Metrics
 
 ### Against Simple Bot (1000 hands)
@@ -39,14 +45,15 @@ Our bot employs a sophisticated strategy that combines:
 - Efficient Monte Carlo simulation
 
 ## Repository Structure
-- `optimize_params.py`: Main bot implementation and testing
-- `cfr_strategy_full.pkl`: Trained strategy file
-- `best_parameters.pkl`: Optimized parameters
+- `cfr_bot/`: Main bot implementation directory
+  - `player.py`: Core bot implementation
+  - `skeleton/`: Required framework files
 
 ## Usage
 To run the bot:
 ```bash
-python optimize_params.py
+cd cfr_bot
+python player.py
 ```
 
 ## Performance History
