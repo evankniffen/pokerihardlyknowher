@@ -57,7 +57,6 @@ class RoundState(namedtuple('_RoundState', ['button', 'street', 'pips', 'stacks'
     '''
     Encodes the game tree for one round of poker.
     '''
-
     def get_delta(self, winner_index: int) -> int:
         '''Returns the delta after rules are applied.
 
@@ -259,7 +258,7 @@ class Player():
             try:
                 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 with server_socket:
-                    server_socket.bind(('', 0))
+                    server_socket.bind(('', 5000))
                     server_socket.settimeout(CONNECT_TIMEOUT)
                     server_socket.listen()
                     port = server_socket.getsockname()[1]

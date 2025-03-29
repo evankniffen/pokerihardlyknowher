@@ -2,6 +2,7 @@ import itertools
 import random
 import pickle
 import time
+import math
 from cfr import (
     CFRPlusSolver, CFRPlusPokerbot, 
     hand_win_probability, bucketize_probability, 
@@ -51,39 +52,39 @@ class RandomBot(Bot):
             if win_prob < 0.35:  # Weak hand
                 if CheckAction in legal_actions:
                     return CheckAction()
-                elif pot_odds < 0.15 and effective_stack > 20:  # Cheap calls with deep stack
+                elif pot_odds < 0.12 and effective_stack > 25:  # More selective with deep stack calls
                     return CallAction()
-                elif is_button and random.random() < 0.12 and effective_stack > 25:  # More button steals
+                elif is_button and random.random() < 0.15 and effective_stack > 30:  # Increased button steals
                     min_raise, max_raise = round_state.raise_bounds()
                     # Smaller steals to minimize risk
-                    raise_size = min_raise + int((max_raise - min_raise) * 0.2)
+                    raise_size = min_raise + int((max_raise - min_raise) * 0.25)
                     return RaiseAction(raise_size)
                 else:
                     return FoldAction()
             elif win_prob < 0.6:  # Medium hand
                 if RaiseAction in legal_actions:
-                    if is_button or random.random() < 0.6:  # More aggressive on button
+                    if is_button or random.random() < 0.65:  # More aggressive on button
                         min_raise, max_raise = round_state.raise_bounds()
-                        # Size based on stack depth
-                        raise_mult = 0.5 if effective_stack > 25 else 0.35
+                        # Size based on stack depth and position
+                        raise_mult = 0.55 if is_button and effective_stack > 25 else 0.4
                         raise_size = min_raise + int((max_raise - min_raise) * raise_mult)
                         return RaiseAction(raise_size)
                 if CheckAction in legal_actions:
                     return CheckAction()
-                elif pot_odds < win_prob * 1.3:  # More liberal calling
+                elif pot_odds < win_prob * 1.25:  # More selective calling
                     return CallAction()
                 else:
                     return FoldAction()
             else:  # Strong hand
                 if RaiseAction in legal_actions:
                     min_raise, max_raise = round_state.raise_bounds()
-                    # Dynamic raise sizing
-                    if is_button and effective_stack > 30:
+                    # Dynamic raise sizing based on position and stack
+                    if is_button and effective_stack > 35:
                         raise_size = max_raise  # Maximum pressure
-                    elif effective_stack > 20:
-                        raise_size = min_raise + int((max_raise - min_raise) * 0.85)
+                    elif effective_stack > 25:
+                        raise_size = min_raise + int((max_raise - min_raise) * 0.9)
                     else:
-                        raise_size = min_raise + int((max_raise - min_raise) * 0.7)
+                        raise_size = min_raise + int((max_raise - min_raise) * 0.8)
                     return RaiseAction(raise_size)
                 else:
                     return CallAction()
@@ -91,31 +92,31 @@ class RandomBot(Bot):
             if win_prob < 0.45:  # Weak hand
                 if CheckAction in legal_actions:
                     return CheckAction()
-                elif pot_odds < 0.25 and effective_stack > 25:  # More liberal calling with deep stacks
+                elif pot_odds < 0.2 and effective_stack > 30:  # More selective with deep stacks
                     return CallAction()
-                elif is_button and random.random() < 0.2 and pot_to_stack_ratio < 0.3:  # More bluffs in small pots
+                elif is_button and random.random() < 0.25 and pot_to_stack_ratio < 0.25:  # More bluffs in small pots
                     min_raise, max_raise = round_state.raise_bounds()
                     # Small bluff raises
-                    raise_size = min_raise + int((max_raise - min_raise) * 0.3)
+                    raise_size = min_raise + int((max_raise - min_raise) * 0.35)
                     return RaiseAction(raise_size)
                 else:
                     return FoldAction()
             elif win_prob < 0.7:  # Medium hand
                 if RaiseAction in legal_actions:
-                    if (is_button and random.random() < 0.7) or random.random() < 0.5:
+                    if (is_button and random.random() < 0.75) or random.random() < 0.55:
                         min_raise, max_raise = round_state.raise_bounds()
                         # Size based on pot and position
-                        raise_mult = 0.6 if is_button else 0.45
+                        raise_mult = 0.65 if is_button else 0.5
                         raise_size = min_raise + int((max_raise - min_raise) * raise_mult)
                         return RaiseAction(raise_size)
                 if CheckAction in legal_actions:
-                    if random.random() < 0.2:  # Sometimes raise instead of check
+                    if random.random() < 0.25:  # Increased check-raise frequency
                         if RaiseAction in legal_actions:
                             min_raise, max_raise = round_state.raise_bounds()
-                            raise_size = min_raise + int((max_raise - min_raise) * 0.4)
+                            raise_size = min_raise + int((max_raise - min_raise) * 0.45)
                             return RaiseAction(raise_size)
                     return CheckAction()
-                elif pot_odds < win_prob * 1.1:  # Call if odds are good
+                elif pot_odds < win_prob * 1.15:  # More selective calling
                     return CallAction()
                 else:
                     return FoldAction()
@@ -123,12 +124,12 @@ class RandomBot(Bot):
                 if RaiseAction in legal_actions:
                     min_raise, max_raise = round_state.raise_bounds()
                     # Dynamic sizing based on multiple factors
-                    if effective_stack > 35:
+                    if effective_stack > 40:
                         raise_size = max_raise
-                    elif pot_to_stack_ratio > 0.5:  # Large pot
-                        raise_size = min_raise + int((max_raise - min_raise) * 0.9)
+                    elif pot_to_stack_ratio > 0.6:  # Large pot
+                        raise_size = min_raise + int((max_raise - min_raise) * 0.95)
                     else:
-                        raise_size = min_raise + int((max_raise - min_raise) * 0.75)
+                        raise_size = min_raise + int((max_raise - min_raise) * 0.85)
                     return RaiseAction(raise_size)
                 elif CallAction in legal_actions:
                     return CallAction()
@@ -403,11 +404,11 @@ def test_parameter_combination(params):
 def optimize_parameters():
     # Parameter ranges to test - optimized for 2000 hands
     parameter_ranges = {
-        "monte_carlo_iterations": [100],  # Fixed at 100
-        "prob_buckets": [8],  # Fixed at 8
-        "test_hands": [2000],  # Increased to 2000 hands for comprehensive statistics
-        "raising_threshold": [0.25],  # Single option
-        "payoff_scaling": [2.0]  # Single option
+        "monte_carlo_iterations": [150, 200],  # Increased iterations for better accuracy
+        "prob_buckets": [8, 10],  # Added more granular probability buckets
+        "test_hands": [2000],  # Keep at 2000 for comprehensive statistics
+        "raising_threshold": [0.2, 0.25, 0.3],  # More granular raising thresholds
+        "payoff_scaling": [1.8, 2.0, 2.2]  # More granular payoff scaling
     }
     
     # Generate all combinations
@@ -419,7 +420,7 @@ def optimize_parameters():
     best_profit = float('-inf')
     
     print(f"Testing {len(combinations)} parameter combinations...")
-    print("Estimated time: 30-40 minutes")
+    print("Estimated time: 45-60 minutes")
     print("Each combination will test 2000 hands")
     
     for i, params in enumerate(combinations):
@@ -438,6 +439,8 @@ def optimize_parameters():
             best_result = results
             best_params = params
             print("New best parameters found!")
+            print(f"Current best profit: {best_profit:.2f} BB")
+            print(f"Current best win rate: {best_result['win_rate']:.1f}%")
     
     print("\nBest parameters found:")
     print("Parameters:", best_params)
@@ -446,6 +449,118 @@ def optimize_parameters():
     # Save best parameters
     with open("best_parameters.pkl", "wb") as f:
         pickle.dump({"params": best_params, "results": best_result}, f)
+
+def test_vs_skeleton(num_hands=10000):
+    """Test our bot against the skeleton bot for specified number of hands."""
+    print(f"\nTesting against simple bot for {num_hands} hands...")
+    print("Loading strategy...")
+    
+    # Load strategy and create our bot
+    with open("cfr_strategy_full.pkl", "rb") as f:
+        strategy = pickle.load(f)
+    
+    params = {
+        "monte_carlo_iterations": 100,
+        "prob_buckets": 8,
+        "test_hands": num_hands,
+        "raising_threshold": 0.25,
+        "payoff_scaling": 2.0
+    }
+    
+    our_bot = RandomBot(strategy, params)
+    
+    # Run simulations
+    print("Starting simulations...")
+    start_time = time.time()
+    total_profit = 0
+    wins = 0
+    action_counts = {"fold": 0, "call": 0, "raise": 0}
+    profit_by_position = {"button": 0, "bb": 0}
+    hands_by_position = {"button": 0, "bb": 0}
+    street_wins = {0: 0, 2: 0, 4: 0}  # Wins by street
+    max_profit = float('-inf')
+    min_profit = float('inf')
+    profit_per_hand = []
+    
+    for i in range(num_hands):
+        if i % 500 == 0:  # Print progress every 500 hands
+            print(f"Hand {i+1}/{num_hands}...")
+            if i > 0:
+                current_profit_per_hand = total_profit / i
+                print(f"Current profit per hand: {current_profit_per_hand:.3f} BB")
+        
+        result = simulate_game_vs_skeleton(our_bot)
+        total_profit += result["profit"]
+        profit_per_hand.append(result["profit"])
+        
+        # Track max and min profits
+        max_profit = max(max_profit, result["profit"])
+        min_profit = min(min_profit, result["profit"])
+        
+        # Track position results
+        position = "button" if i % 2 == 0 else "bb"
+        profit_by_position[position] += result["profit"]
+        hands_by_position[position] += 1
+        
+        if result["profit"] > 0:
+            wins += 1
+            if "last_street" in result:
+                street_wins[result["last_street"]] += 1
+                
+        for action, count in result["action_counts"].items():
+            action_counts[action] += count
+    
+    # Calculate statistics
+    total_actions = sum(action_counts.values())
+    action_percentages = {action: (count / total_actions) * 100 for action, count in action_counts.items()}
+    win_rate = (wins / num_hands) * 100
+    avg_profit_per_hand = total_profit / num_hands
+    
+    # Calculate position-based stats
+    button_profit_per_hand = profit_by_position["button"] / hands_by_position["button"]
+    bb_profit_per_hand = profit_by_position["bb"] / hands_by_position["bb"]
+    
+    # Calculate standard deviation
+    mean = avg_profit_per_hand
+    variance = sum((x - mean) ** 2 for x in profit_per_hand) / len(profit_per_hand)
+    std_dev = math.sqrt(variance)
+    
+    results = {
+        "total_profit": total_profit,
+        "avg_profit_per_hand": avg_profit_per_hand,
+        "win_rate": win_rate,
+        "action_counts": action_counts,
+        "action_percentages": action_percentages,
+        "position_stats": {
+            "button_profit_per_hand": button_profit_per_hand,
+            "bb_profit_per_hand": bb_profit_per_hand
+        },
+        "street_wins": street_wins,
+        "max_profit": max_profit,
+        "min_profit": min_profit,
+        "std_dev": std_dev,
+        "total_time": time.time() - start_time,
+        "num_hands": num_hands
+    }
+    
+    print("\nDetailed Results vs Simple Bot:")
+    print(f"Total profit: {results['total_profit']:.1f} BB")
+    print(f"Average profit per hand: {results['avg_profit_per_hand']:.3f} BB")
+    print(f"Win rate: {results['win_rate']:.1f}%")
+    print("\nAction distribution:")
+    for action, percentage in results['action_percentages'].items():
+        print(f"  {action}: {percentage:.1f}%")
+    print("\nPosition statistics:")
+    print(f"  Button profit per hand: {results['position_stats']['button_profit_per_hand']:.3f} BB")
+    print(f"  BB profit per hand: {results['position_stats']['bb_profit_per_hand']:.3f} BB")
+    print("\nProfit statistics:")
+    print(f"  Max profit in a hand: {results['max_profit']:.1f} BB")
+    print(f"  Min profit in a hand: {results['min_profit']:.1f} BB")
+    print(f"  Standard deviation: {results['std_dev']:.3f} BB")
+    print(f"\nTotal time: {results['total_time']:.2f}s")
+    print(f"Average time per hand: {results['total_time']/num_hands:.3f}s")
+    
+    return results
 
 def simulate_game_vs_skeleton(our_bot):
     """Simulate a single hand of poker against the simple bot."""
@@ -469,10 +584,12 @@ def simulate_game_vs_skeleton(our_bot):
     # Track actions and profit
     action_counts = {"fold": 0, "call": 0, "raise": 0}
     profit = 0
+    last_street = 0
     
     # Play the hand
     while not isinstance(round_state, TerminalState):
         active = round_state.button
+        last_street = round_state.street
         
         if active == 0:  # Our turn
             action = our_bot.get_action(round_state, active)
@@ -496,72 +613,9 @@ def simulate_game_vs_skeleton(our_bot):
             
     return {
         "profit": profit,
-        "action_counts": action_counts
-    }
-
-def test_vs_skeleton(num_hands=1000):
-    """Test our bot against the skeleton bot for specified number of hands."""
-    print(f"\nTesting against skeleton bot for {num_hands} hands...")
-    print("Loading strategy...")
-    
-    # Load strategy and create our bot
-    with open("cfr_strategy_full.pkl", "rb") as f:
-        strategy = pickle.load(f)
-    
-    params = {
-        "monte_carlo_iterations": 100,
-        "prob_buckets": 8,
-        "test_hands": num_hands,
-        "raising_threshold": 0.25,
-        "payoff_scaling": 2.0
-    }
-    
-    our_bot = RandomBot(strategy, params)
-    
-    # Run simulations
-    print("Starting simulations...")
-    start_time = time.time()
-    total_profit = 0
-    wins = 0
-    action_counts = {"fold": 0, "call": 0, "raise": 0}
-    
-    for i in range(num_hands):
-        if i % 100 == 0:
-            print(f"Hand {i+1}/{num_hands}...")
-        
-        result = simulate_game_vs_skeleton(our_bot)
-        total_profit += result["profit"]
-        if result["profit"] > 0:
-            wins += 1
-        for action, count in result["action_counts"].items():
-            action_counts[action] += count
-    
-    # Calculate statistics
-    total_actions = sum(action_counts.values())
-    action_percentages = {action: (count / total_actions) * 100 for action, count in action_counts.items()}
-    win_rate = (wins / num_hands) * 100
-    avg_profit_per_hand = total_profit / num_hands
-    
-    results = {
-        "total_profit": total_profit,
-        "avg_profit_per_hand": avg_profit_per_hand,
-        "win_rate": win_rate,
         "action_counts": action_counts,
-        "action_percentages": action_percentages,
-        "total_time": time.time() - start_time,
-        "num_hands": num_hands
+        "last_street": last_street
     }
-    
-    print("\nResults vs Skeleton Bot:")
-    print(f"Total profit: {results['total_profit']:.1f} BB")
-    print(f"Average profit per hand: {results['avg_profit_per_hand']:.3f} BB")
-    print(f"Win rate: {results['win_rate']:.1f}%")
-    print("Action distribution:")
-    for action, percentage in results['action_percentages'].items():
-        print(f"  {action}: {percentage:.1f}%")
-    print(f"Total time: {results['total_time']:.2f}s")
-    
-    return results
 
 if __name__ == "__main__":
-    test_vs_skeleton(1000) 
+    test_vs_skeleton(10000) 
